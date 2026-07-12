@@ -1,6 +1,6 @@
 # Model Hub 可执行设计蓝图
 
-本文把 [`model-hub.md`](model-hub.md) 中的领域设计收口成可直接建设的工程蓝图。它面向后续实现、测试、迁移和验收，不重新解释 MH 为什么存在。
+本文把 [`model-hub.md`](model-hub.md) 中的领域设计收口成可直接建设的工程蓝图。它面向后续实现、测试、迁移和验收，不重新解释 MH 为什么存在。能力开放度、跨中心可见性和内部保留边界以 [`boundary-and-exposure-reference.md`](boundary-and-exposure-reference.md) 为准。
 
 ## 1. 建设目标
 
@@ -15,6 +15,7 @@ P0 必须做到：
 - 用量记录覆盖 token、耗时、成功/失败、fallback attempt、estimated cost 和错误类别。
 - 工具中心可以把模型能力封装为工具，但工具注册、授权和工作流不进入 MH。
 - 管理面能看到 provider status、model list、credential status、routing policy、fallback attempts、health logs 和 usage summary。
+- 对外接口遵守 L0-L4 开放度分级：运行时、CH、工具中心只能拿 L2 attempt plan 或 L4 capability export；UI/diagnostics 只能拿 L3 脱敏管理视图。
 
 P0 不做：
 
@@ -48,6 +49,7 @@ MH 内部拆成八个工程模块。P0 可以先在单机版里实现为一个 `
 - Usage Ledger 不保存未脱敏 prompt 或 output。
 - Capability Exporter 不创建工具，只声明模型能力和 schema。
 - Health Monitor 不用用户数据做探针。
+- DTO 和 diagnostics 不得把 L0/L1 字段暴露给 Skill、自定义应用、runtime workspace、MCP server 或普通日志。
 
 ## 3. P0 数据模型清单
 

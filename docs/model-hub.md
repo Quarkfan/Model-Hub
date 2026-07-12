@@ -64,6 +64,8 @@ MH 必须满足：
 - vLLM 是自托管推理部署参考，不进入桌面 P0 依赖。
 - Diffusion 类项目重点借鉴能力描述、参数 schema、资源引用和工具封装方式，不把图像工作流系统塞进 MH。
 
+MH 的边界和能力开放度另见 [`boundary-and-exposure-reference.md`](boundary-and-exposure-reference.md)。后续实现时，provider secret、adapter 执行细节、attempt plan、管理面状态和 capability export 必须按该文档的 L0-L4 分级处理。
+
 ## 4. 核心概念
 
 ### 4.1 ModelProvider

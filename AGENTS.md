@@ -4,12 +4,14 @@
 
 1. `STATUS.md`
 2. `docs/model-hub.md`
-3. `docs/implementation-blueprint.md`
+3. `docs/boundary-and-exposure-reference.md`
+4. `docs/implementation-blueprint.md`
 
 边界约定：
 
 - MH 管理各类模型服务，不只管理大语言模型。范围包括 LLM、embedding、rerank、vision、speech-to-text、TTS、image generation、image editing、Stable Diffusion 类模型、本地模型、自托管推理服务和 OpenAI-compatible endpoint。
 - MH 对外提供模型注册、能力描述、模型选择、路由、失败切换、健康检查、用量/成本统计、凭据引用、部署状态和模型调用治理所需的事实，不负责 Agent session、workspace、sandbox 或最终 prompt 构造。
+- MH 对外能力开放必须遵守 `docs/boundary-and-exposure-reference.md` 的 L0-L4 分级；raw secret、解密 credential、provider private headers、prompt/output/customer data 不得越过允许层级。
 - 工具与能力中心可以把 MH 中的模型能力封装成工具，但工具注册、工具授权、工具 UI 和工作流编排不属于 MH。
 - 运行时中心可以消费 MH 的模型选择结果和尝试计划，但 MH 不直接执行 Agent runtime。
 - CH 可以请求 embedding、rerank、summary、vision 等模型候选，但 CH 不绕过 MH 直接读取 provider credential。
