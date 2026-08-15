@@ -1,10 +1,10 @@
 # Model Hub 当前状态
 
-最后更新：2026-07-12
+最后更新：2026-08-15
 
 ## 仓库定位
 
-本仓库是 Model Hub（MH，模型枢纽）的独立仓库，父项目 `QuarkfanTools` 通过 submodule 引用。当前阶段以文档和合同为事实来源，后续实现可以先在单机版内落 facade，再逐步迁移到本仓库。
+本仓库是 Model Hub（MH，模型枢纽）的独立仓库，父项目 `QuarkfanTools` 通过 submodule 引用。当前阶段已经从纯蓝图进入 3.0 server-ready 准备：后续优先在本仓库建设可启动的 MH 服务骨架，集中承载 provider、路由、失败切换、健康检查和用量统计。
 
 ## 当前事实来源
 
@@ -30,11 +30,11 @@
 
 ## 下一步建议
 
-1. 在单机版 `QuarkfanTools-Single/` 内先建立 `ModelHub` facade，不急于拆独立进程。
-2. 将现有 MODEL PROVIDER 配置、轮流/随机、失败切换和 runtime model 参数映射到 MH P0 合同。
+1. 建立 MH server P0 工程骨架：启动入口、配置加载、HTTP/RPC 管理面、`healthz`、`readyz`、`version`、结构化日志和测试命令。
+2. 落 Provider Registry、CredentialRef、OpenAI-compatible adapter、Anthropic adapter、routing policy、fallback policy、health probe 和 usage trace。
 3. 按 `docs/boundary-and-exposure-reference.md` 的 L0-L4 分级实现 `selectModel`、diagnostics、usage 和 capability export，先保证 secret、prompt、output 不跨层泄露。
-4. 增加 provider health、model list refresh、usage trace、fallback attempts 和 credential status UI。
-5. 为 Tool & Capability Center 设计 `ModelCapabilityExport`，允许 Stable Diffusion、TTS、vision、embedding 等模型能力被封装为工具。
+4. 增加 provider health、model list refresh、usage trace、fallback attempts 和 credential status 管理面 API。
+5. 为 Capability Registry 设计 `ModelCapabilityExport`，允许 Stable Diffusion、TTS、vision、embedding 等模型能力被封装为工具。
 6. 继续补充 image generation / diffusion 方向源码级参考，优先 ComfyUI、AUTOMATIC1111 Stable Diffusion WebUI、InvokeAI、Diffusers。
 
 ## 验证
