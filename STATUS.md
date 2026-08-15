@@ -1,10 +1,10 @@
 # Model Hub 当前状态
 
-最后更新：2026-08-15
+最后更新：2026-08-16
 
 ## 仓库定位
 
-本仓库是 Model Hub（MH，模型枢纽）的独立仓库，父项目 `QuarkfanTools` 通过 submodule 引用。当前阶段已经从纯蓝图进入 3.0 server-ready 准备：后续优先在本仓库建设可启动的 MH 服务骨架，集中承载 provider、路由、失败切换、健康检查和用量统计。
+本仓库是 Model Hub（MH，模型枢纽）的独立仓库，父项目 `QuarkfanTools` 通过 submodule 引用。当前 `0.1.0` 已部署，完成 provider、路由、失败切换、健康检查和用量统计闭环。
 
 ## 当前事实来源
 
@@ -18,6 +18,11 @@
 父项目的中心边界、跨中心协议、参考矩阵、参考项目评估和 macOS/Linux 蓝图保存在父项目 `docs/` 与 `Reference-Projects/` 下；MH 仓库只保留 MH 自己的设计和实现合同。
 
 ## 已完成
+
+- Server implementation `0.1.0`：Node.js 22、TypeScript、Fastify、PostgreSQL 和 Dockerfile。
+- 已实现 Provider、Model Deployment、Routing Policy、固定/轮流/随机选择、失败切换、Provider probe、真实 invoke、usage/cost trace 和 Model Capability Export。
+- 首批协议适配包括 OpenAI-compatible、Anthropic、Ollama、Stable Diffusion WebUI 和 custom HTTP；secret 只通过 credentialRef resolver 进入执行层。
+- Memory repository 用于合同测试，PostgreSQL repository 通过独立 `mh` schema 持久化并使用原子 round-robin cursor。
 
 - 模型中心正式命名为 Model Hub，简称 MH。
 - 明确 MH 不只是大语言模型中心，而是各类模型服务的统一管理中心。
@@ -39,8 +44,12 @@
 
 ## 验证
 
-当前仓库暂无构建命令。文档阶段常规验证：
+当前仓库验证：
 
 ```bash
+npm install
+npm run typecheck
+npm test
+npm run build
 git diff --check
 ```
