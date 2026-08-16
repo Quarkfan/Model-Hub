@@ -9,12 +9,14 @@ import {
 } from "./adapters.js";
 import { ModelHubService } from "./service.js";
 import { HubError, fail, ok } from "./platform.js";
+import type { ExtensionStateRepository } from "./extensions.js";
 export interface BuildOptions {
   repository: ModelRepository;
   internalToken: string;
   secretResolver?: SecretResolver;
   fetcher?: typeof fetch;
   logger?: boolean | { level: string };
+  extensionRepository?: ExtensionStateRepository;
 }
 const kinds = [
   "chat",
@@ -112,7 +114,10 @@ export function buildApp(o: BuildOptions): FastifyInstance {
       o.secretResolver ?? envSecretResolver(process.env, fetcher),
       fetcher,
     ),
+    o.extensionRepository,
   );
+  app.addHook("onReady", async () => service.extensions.initialize());
+  app.addHook("onClose", async () => service.extensions.close());
   app.addHook("onRequest", async (req, reply) => {
     if (["/healthz", "/readyz", "/version"].includes(req.url)) return;
     if (req.headers.authorization !== `Bearer ${o.internalToken}`)
@@ -190,7 +195,7 @@ export function buildApp(o: BuildOptions): FastifyInstance {
   );
   app.post("/v1/extensions/:id/probe", async (req) =>
     ok(
-      service.extensions.probe(
+      await service.extensions.probe(
         z.object({ id: z.string() }).parse(req.params).id,
       ),
       req.id,
@@ -212,11 +217,11 @@ export function buildApp(o: BuildOptions): FastifyInstance {
         ]),
       })
       .parse(req.params);
-    return ok(service.extensions.transition(id, state), req.id);
+    return ok(await service.extensions.transition(id, state), req.id);
   });
   app.get("/v1/extensions/:id/logs", async (req) =>
     ok(
-      service.extensions.logs(
+      await service.extensions.logs(
         z.object({ id: z.string() }).parse(req.params).id,
       ),
       req.id,

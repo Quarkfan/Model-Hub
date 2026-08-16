@@ -26,6 +26,7 @@
 - Provider、Model Deployment 和 Routing Policy 已提供显式 list/detail/create/update/delete API；更新不会创建错误 ID，删除 Provider/Deployment 时会检查下游依赖并返回 409。
 - Dashboard 支持三类对象的新增、编辑、启停和删除；高级配置覆盖请求头、优先级/权重、模型能力、上下文窗口、价格和元数据。
 - OpenAI、Anthropic、Ollama、Stable Diffusion 和 Custom HTTP 协议实现已登记为 Model Adapter 扩展；Provider probe 和 invoke 在调用前解析可运行扩展，统一管理面暴露能力、隔离、状态和日志。
+- Model Adapter 生命周期、版本代次、最近探针和事件日志持久化在 `mh.extension_states` / `mh.extension_events`；状态与事件原子提交，服务重启不会重新启用已停用的适配器。
 
 - 模型中心正式命名为 Model Hub，简称 MH。
 - 明确 MH 不只是大语言模型中心，而是各类模型服务的统一管理中心。
@@ -54,4 +55,4 @@ npm run build
 git diff --check
 ```
 
-当前测试：5 项。
+当前测试：6 项，包含扩展生命周期重启恢复合同。

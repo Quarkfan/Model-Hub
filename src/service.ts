@@ -11,13 +11,19 @@ import type {
 } from "./types.js";
 import { HubError } from "./platform.js";
 import { ProviderInvoker } from "./adapters.js";
-import { modelExtensions } from "./extensions.js";
+import {
+  createModelExtensions,
+  type ExtensionStateRepository,
+} from "./extensions.js";
 export class ModelHubService {
-  readonly extensions = modelExtensions;
+  readonly extensions;
   constructor(
     readonly repo: ModelRepository,
     private invoker: ProviderInvoker,
-  ) {}
+    extensionRepository?: ExtensionStateRepository,
+  ) {
+    this.extensions = createModelExtensions(extensionRepository);
+  }
   async saveProvider(
     i: Partial<ModelProvider> &
       Pick<ModelProvider, "name" | "protocol" | "baseUrl">,
