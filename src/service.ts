@@ -11,7 +11,9 @@ import type {
 } from "./types.js";
 import { HubError } from "./platform.js";
 import { ProviderInvoker } from "./adapters.js";
+import { modelExtensions } from "./extensions.js";
 export class ModelHubService {
+  readonly extensions = modelExtensions;
   constructor(
     readonly repo: ModelRepository,
     private invoker: ProviderInvoker,
@@ -29,7 +31,8 @@ export class ModelHubService {
         old.baseUrl !== i.baseUrl ||
         (i.credentialRef !== undefined &&
           old.credentialRef !== i.credentialRef) ||
-        JSON.stringify(i.headers ?? old.headers) !== JSON.stringify(old.headers);
+        JSON.stringify(i.headers ?? old.headers) !==
+          JSON.stringify(old.headers);
     return this.repo.saveProvider({
       id: i.id ?? randomUUID(),
       name: i.name,
@@ -72,6 +75,7 @@ export class ModelHubService {
   }
   async probe(id: string) {
     const p = await this.provider(id);
+    this.extensions.require(`model-adapter.${p.protocol}`);
     try {
       await this.invoker.probe(p);
       p.status = "healthy";
@@ -106,8 +110,7 @@ export class ModelHubService {
       enabled: i.enabled ?? old?.enabled ?? true,
       capabilities: i.capabilities ?? old?.capabilities ?? [],
       contextWindow: i.contextWindow ?? old?.contextWindow,
-      inputPricePerMillion:
-        i.inputPricePerMillion ?? old?.inputPricePerMillion,
+      inputPricePerMillion: i.inputPricePerMillion ?? old?.inputPricePerMillion,
       outputPricePerMillion:
         i.outputPricePerMillion ?? old?.outputPricePerMillion,
       metadata: i.metadata ?? old?.metadata ?? {},
@@ -167,8 +170,7 @@ export class ModelHubService {
       mode: i.mode,
       deploymentIds,
       fixedDeploymentId,
-      failoverOnFailure:
-        i.failoverOnFailure ?? old?.failoverOnFailure ?? true,
+      failoverOnFailure: i.failoverOnFailure ?? old?.failoverOnFailure ?? true,
       maxAttempts: Math.min(
         Math.max(i.maxAttempts ?? i.deploymentIds.length, 1),
         10,
@@ -258,15 +260,13 @@ export class ModelHubService {
       : 1;
     return {
       policyId: policy.id,
-      attempts: ordered
-        .slice(0, count)
-        .map((x, index) => ({
-          index,
-          deploymentId: x.d.id,
-          providerId: x.p.id,
-          modelId: x.d.modelId,
-          kind: x.d.kind,
-        })),
+      attempts: ordered.slice(0, count).map((x, index) => ({
+        index,
+        deploymentId: x.d.id,
+        providerId: x.p.id,
+        modelId: x.d.modelId,
+        kind: x.d.kind,
+      })),
     };
   }
   async invoke(i: ModelInvokeRequest): Promise<ModelInvokeResult> {
@@ -282,6 +282,7 @@ export class ModelHubService {
         p = await this.provider(a.providerId),
         started = Date.now();
       try {
+        this.extensions.require(`model-adapter.${p.protocol}`);
         const result = await this.invoker.invoke(p, d, i),
           latencyMs = Date.now() - started,
           cost =

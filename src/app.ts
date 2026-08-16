@@ -127,18 +127,31 @@ export function buildApp(o: BuildOptions): FastifyInstance {
         );
   });
   app.setErrorHandler((e, req, reply) => {
+    if (
+      !(e instanceof HubError) &&
+      e instanceof Error &&
+      "statusCode" in e &&
+      typeof e.statusCode === "number"
+    )
+      return reply
+        .code(e.statusCode)
+        .send(
+          fail(
+            e.statusCode === 404 ? "NOT_FOUND" : "CONFLICT",
+            e.message,
+            req.id,
+          ),
+        );
     if (e instanceof HubError)
       return reply
         .code(e.statusCode)
         .send(fail(e.code, e.message, req.id, e.retryable, e.details));
     if (e instanceof z.ZodError)
-      return reply
-        .code(400)
-        .send(
-          fail("INVALID_REQUEST", "Request validation failed", req.id, false, {
-            issues: e.issues,
-          }),
-        );
+      return reply.code(400).send(
+        fail("INVALID_REQUEST", "Request validation failed", req.id, false, {
+          issues: e.issues,
+        }),
+      );
     req.log.error(e);
     return reply
       .code(500)
@@ -166,6 +179,49 @@ export function buildApp(o: BuildOptions): FastifyInstance {
   app.get("/v1/providers", async (req) =>
     ok(await o.repository.listProviders(), req.id),
   );
+  app.get("/v1/extensions", async (req) =>
+    ok(service.extensions.list(), req.id),
+  );
+  app.get("/v1/extensions/:id", async (req) =>
+    ok(
+      service.extensions.get(z.object({ id: z.string() }).parse(req.params).id),
+      req.id,
+    ),
+  );
+  app.post("/v1/extensions/:id/probe", async (req) =>
+    ok(
+      service.extensions.probe(
+        z.object({ id: z.string() }).parse(req.params).id,
+      ),
+      req.id,
+    ),
+  );
+  app.post("/v1/extensions/:id/lifecycle/:state", async (req) => {
+    const { id, state } = z
+      .object({
+        id: z.string(),
+        state: z.enum([
+          "installed",
+          "verified",
+          "canary",
+          "active",
+          "draining",
+          "disabled",
+          "failed",
+          "retired",
+        ]),
+      })
+      .parse(req.params);
+    return ok(service.extensions.transition(id, state), req.id);
+  });
+  app.get("/v1/extensions/:id/logs", async (req) =>
+    ok(
+      service.extensions.logs(
+        z.object({ id: z.string() }).parse(req.params).id,
+      ),
+      req.id,
+    ),
+  );
   app.post("/v1/providers", async (req, reply) =>
     reply
       .code(201)
@@ -177,7 +233,10 @@ export function buildApp(o: BuildOptions): FastifyInstance {
     const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
     await service.provider(id);
     return ok(
-      await service.saveProvider({ ...providerBody.omit({ id: true }).parse(req.body), id }),
+      await service.saveProvider({
+        ...providerBody.omit({ id: true }).parse(req.body),
+        id,
+      }),
       req.id,
     );
   });

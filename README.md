@@ -14,6 +14,7 @@ Model Hub is not only an LLM provider manager. It is the platform center for mod
 - Local model providers such as Ollama and desktop OpenAI-compatible endpoints
 - Self-hosted deployments such as vLLM or other OpenAI-compatible serving stacks
 - Capability exports that Tool & Capability Center can wrap into tools
+- Versioned model-protocol adapter extensions with probes, lifecycle gates and capability negotiation
 
 Authoritative Model Hub notes live here:
 
