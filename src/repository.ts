@@ -19,6 +19,7 @@ export interface ModelRepository {
   listPolicies(): Promise<RoutingPolicy[]>;
   getPolicy(id: string): Promise<RoutingPolicy | undefined>;
   savePolicy(v: RoutingPolicy): Promise<RoutingPolicy>;
+  removePolicy(id: string): Promise<boolean>;
   advancePolicyCursor(id: string, modulo: number): Promise<number>;
   appendUsage(v: UsageRecord): Promise<void>;
   usageSummary(filter: {
@@ -84,6 +85,9 @@ export class MemoryModelRepository implements ModelRepository {
   async savePolicy(v: RoutingPolicy) {
     this.policies.set(v.id, structuredClone(v));
     return v;
+  }
+  async removePolicy(id: string) {
+    return this.policies.delete(id);
   }
   async advancePolicyCursor(id: string, modulo: number) {
     const p = this.policies.get(id);

@@ -23,6 +23,8 @@
 - 已实现 Provider、Model Deployment、Routing Policy、固定/轮流/随机选择、失败切换、Provider probe、真实 invoke、usage/cost trace 和 Model Capability Export。
 - 首批协议适配包括 OpenAI-compatible、Anthropic、Ollama、Stable Diffusion WebUI 和 custom HTTP；secret 只通过 credentialRef resolver 进入执行层。
 - Memory repository 用于合同测试，PostgreSQL repository 通过独立 `mh` schema 持久化并使用原子 round-robin cursor。
+- Provider、Model Deployment 和 Routing Policy 已提供显式 list/detail/create/update/delete API；更新不会创建错误 ID，删除 Provider/Deployment 时会检查下游依赖并返回 409。
+- Dashboard 支持三类对象的新增、编辑、启停和删除；高级配置覆盖请求头、优先级/权重、模型能力、上下文窗口、价格和元数据。
 
 - 模型中心正式命名为 Model Hub，简称 MH。
 - 明确 MH 不只是大语言模型中心，而是各类模型服务的统一管理中心。
@@ -35,12 +37,9 @@
 
 ## 下一步建议
 
-1. 建立 MH server P0 工程骨架：启动入口、配置加载、HTTP/RPC 管理面、`healthz`、`readyz`、`version`、结构化日志和测试命令。
-2. 落 Provider Registry、CredentialRef、OpenAI-compatible adapter、Anthropic adapter、routing policy、fallback policy、health probe 和 usage trace。
-3. 按 `docs/boundary-and-exposure-reference.md` 的 L0-L4 分级实现 `selectModel`、diagnostics、usage 和 capability export，先保证 secret、prompt、output 不跨层泄露。
-4. 增加 provider health、model list refresh、usage trace、fallback attempts 和 credential status 管理面 API。
-5. 为 Capability Registry 设计 `ModelCapabilityExport`，允许 Stable Diffusion、TTS、vision、embedding 等模型能力被封装为工具。
-6. 继续补充 image generation / diffusion 方向源码级参考，优先 ComfyUI、AUTOMATIC1111 Stable Diffusion WebUI、InvokeAI、Diffusers。
+1. 增加 provider model-list discovery、自动同步预览和变更确认。
+2. 增加按成本、延迟、并发和健康冷却时间路由。
+3. 继续补充 image generation / diffusion 方向源码级参考，优先 ComfyUI、AUTOMATIC1111 Stable Diffusion WebUI、InvokeAI、Diffusers。
 
 ## 验证
 
@@ -53,3 +52,5 @@ npm test
 npm run build
 git diff --check
 ```
+
+当前测试：5 项。

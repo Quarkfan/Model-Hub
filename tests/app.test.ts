@@ -152,6 +152,114 @@ describe("Model Hub", () => {
     await app.close();
   });
 
+  it("supports explicit CRUD and protects referenced model configuration", async () => {
+    const repo = new MemoryModelRepository();
+    const app = buildApp({ repository: repo, internalToken: token });
+    const request = (
+      method: "GET" | "POST" | "PUT" | "DELETE",
+      url: string,
+      payload?: Record<string, unknown>,
+    ) =>
+      app.inject({
+        method,
+        url,
+        headers: auth,
+        ...(payload ? { payload } : {}),
+      });
+    const create = async (url: string, payload: Record<string, unknown>) =>
+      (await request("POST", url, payload)).json().data;
+    const provider = await create("/v1/providers", {
+      name: "editable",
+      protocol: "openai",
+      baseUrl: "https://models.example",
+      credentialRef: "governance:default:credential-a",
+    });
+    const model = await create("/v1/models", {
+      providerId: provider.id,
+      modelId: "model-a",
+      name: "Model A",
+      kind: "chat",
+    });
+    const policy = await create("/v1/routing-policies", {
+      name: "Primary",
+      mode: "fixed",
+      deploymentIds: [model.id],
+      fixedDeploymentId: model.id,
+    });
+
+    const updatedProvider = await request(
+      "PUT",
+      `/v1/providers/${provider.id}`,
+      {
+        name: "edited",
+        protocol: "openai",
+        baseUrl: "https://models.example/v1",
+        enabled: false,
+      },
+    );
+    expect(updatedProvider.statusCode).toBe(200);
+    expect(updatedProvider.json().data).toMatchObject({
+      name: "edited",
+      enabled: false,
+      credentialRef: "governance:default:credential-a",
+    });
+    expect(
+      (await request("GET", `/v1/providers/${provider.id}`)).json().data.name,
+    ).toBe("edited");
+    expect(
+      (await request("DELETE", `/v1/providers/${provider.id}`)).statusCode,
+    ).toBe(409);
+
+    const updatedModel = await request("PUT", `/v1/models/${model.id}`, {
+      providerId: provider.id,
+      modelId: "model-b",
+      name: "Model B",
+      kind: "chat",
+      enabled: false,
+    });
+    expect(updatedModel.statusCode).toBe(200);
+    expect(
+      (await request("GET", `/v1/models/${model.id}`)).json().data,
+    ).toMatchObject({ modelId: "model-b", name: "Model B", enabled: false });
+    expect(
+      (await request("DELETE", `/v1/models/${model.id}`)).statusCode,
+    ).toBe(409);
+
+    const updatedPolicy = await request(
+      "PUT",
+      `/v1/routing-policies/${policy.id}`,
+      {
+        name: "Fallback",
+        mode: "round-robin",
+        deploymentIds: [model.id],
+        failoverOnFailure: false,
+      },
+    );
+    expect(updatedPolicy.statusCode).toBe(200);
+    expect(
+      (await request("GET", `/v1/routing-policies/${policy.id}`)).json().data,
+    ).toMatchObject({
+      name: "Fallback",
+      mode: "round-robin",
+      failoverOnFailure: false,
+    });
+    expect(
+      (await request("DELETE", `/v1/routing-policies/${policy.id}`)).json()
+        .data.removed,
+    ).toBe(true);
+    expect(
+      (await request("DELETE", `/v1/models/${model.id}`)).json().data.removed,
+    ).toBe(true);
+    expect(
+      (await request("DELETE", `/v1/providers/${provider.id}`)).json().data
+        .removed,
+    ).toBe(true);
+    expect(
+      (await request("GET", `/v1/providers/${provider.id}`)).statusCode,
+    ).toBe(404);
+    await app.close();
+  });
+
   it("normalizes OpenAI tool calls and preserves tool history", async () => {
     const requests: any[] = [];
     const repo = new MemoryModelRepository();

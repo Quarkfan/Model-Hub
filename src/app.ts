@@ -173,6 +173,14 @@ export function buildApp(o: BuildOptions): FastifyInstance {
         ok(await service.saveProvider(providerBody.parse(req.body)), req.id),
       ),
   );
+  app.put("/v1/providers/:id", async (req) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    await service.provider(id);
+    return ok(
+      await service.saveProvider({ ...providerBody.omit({ id: true }).parse(req.body), id }),
+      req.id,
+    );
+  });
   app.get("/v1/providers/:id", async (req) =>
     ok(
       await service.provider(
@@ -183,11 +191,9 @@ export function buildApp(o: BuildOptions): FastifyInstance {
   );
   app.delete("/v1/providers/:id", async (req) =>
     ok(
-      {
-        removed: await o.repository.removeProvider(
-          z.object({ id: z.string().uuid() }).parse(req.params).id,
-        ),
-      },
+      await service.removeProvider(
+        z.object({ id: z.string().uuid() }).parse(req.params).id,
+      ),
       req.id,
     ),
   );
@@ -219,13 +225,30 @@ export function buildApp(o: BuildOptions): FastifyInstance {
         ),
       ),
   );
+  app.get("/v1/models/:id", async (req) =>
+    ok(
+      await service.deployment(
+        z.object({ id: z.string().uuid() }).parse(req.params).id,
+      ),
+      req.id,
+    ),
+  );
+  app.put("/v1/models/:id", async (req) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    await service.deployment(id);
+    return ok(
+      await service.saveDeployment({
+        ...deploymentBody.omit({ id: true }).parse(req.body),
+        id,
+      }),
+      req.id,
+    );
+  });
   app.delete("/v1/models/:id", async (req) =>
     ok(
-      {
-        removed: await o.repository.removeDeployment(
-          z.object({ id: z.string().uuid() }).parse(req.params).id,
-        ),
-      },
+      await service.removeDeployment(
+        z.object({ id: z.string().uuid() }).parse(req.params).id,
+      ),
       req.id,
     ),
   );
@@ -236,6 +259,33 @@ export function buildApp(o: BuildOptions): FastifyInstance {
     reply
       .code(201)
       .send(ok(await service.savePolicy(policyBody.parse(req.body)), req.id)),
+  );
+  app.get("/v1/routing-policies/:id", async (req) =>
+    ok(
+      await service.policy(
+        z.object({ id: z.string().uuid() }).parse(req.params).id,
+      ),
+      req.id,
+    ),
+  );
+  app.put("/v1/routing-policies/:id", async (req) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    await service.policy(id);
+    return ok(
+      await service.savePolicy({
+        ...policyBody.omit({ id: true }).parse(req.body),
+        id,
+      }),
+      req.id,
+    );
+  });
+  app.delete("/v1/routing-policies/:id", async (req) =>
+    ok(
+      await service.removePolicy(
+        z.object({ id: z.string().uuid() }).parse(req.params).id,
+      ),
+      req.id,
+    ),
   );
   app.post("/v1/select", async (req) =>
     ok(

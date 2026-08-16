@@ -21,18 +21,30 @@ export class ModelHubService {
       Pick<ModelProvider, "name" | "protocol" | "baseUrl">,
   ) {
     const old = i.id ? await this.repo.getProvider(i.id) : undefined,
-      n = new Date().toISOString();
+      n = new Date().toISOString(),
+      enabled = i.enabled ?? old?.enabled ?? true,
+      configurationChanged =
+        !old ||
+        old.protocol !== i.protocol ||
+        old.baseUrl !== i.baseUrl ||
+        (i.credentialRef !== undefined &&
+          old.credentialRef !== i.credentialRef) ||
+        JSON.stringify(i.headers ?? old.headers) !== JSON.stringify(old.headers);
     return this.repo.saveProvider({
       id: i.id ?? randomUUID(),
       name: i.name,
       protocol: i.protocol,
       baseUrl: i.baseUrl,
-      credentialRef: i.credentialRef,
-      enabled: i.enabled ?? true,
-      priority: i.priority ?? 100,
-      weight: i.weight ?? 1,
-      headers: i.headers ?? {},
-      status: i.enabled === false ? "disabled" : "configured",
+      credentialRef: i.credentialRef ?? old?.credentialRef,
+      enabled,
+      priority: i.priority ?? old?.priority ?? 100,
+      weight: i.weight ?? old?.weight ?? 1,
+      headers: i.headers ?? old?.headers ?? {},
+      status: !enabled
+        ? "disabled"
+        : configurationChanged || old?.status === "disabled"
+          ? "configured"
+          : (old?.status ?? "configured"),
       lastProbeAt: old?.lastProbeAt,
       lastError: old?.lastError,
       createdAt: old?.createdAt ?? n,
@@ -43,6 +55,20 @@ export class ModelHubService {
     const v = await this.repo.getProvider(id);
     if (!v) throw new HubError("NOT_FOUND", `Provider not found: ${id}`, 404);
     return v;
+  }
+  async removeProvider(id: string) {
+    await this.provider(id);
+    const deployments = await this.repo.listDeployments(id);
+    if (deployments.length)
+      throw new HubError(
+        "CONFLICT",
+        "Provider is still used by model deployments",
+        409,
+        false,
+        { deploymentIds: deployments.map((deployment) => deployment.id) },
+      );
+    await this.repo.removeProvider(id);
+    return { removed: true };
   }
   async probe(id: string) {
     const p = await this.provider(id);
@@ -77,12 +103,14 @@ export class ModelHubService {
       modelId: i.modelId,
       name: i.name,
       kind: i.kind,
-      enabled: i.enabled ?? true,
-      capabilities: i.capabilities ?? [],
-      contextWindow: i.contextWindow,
-      inputPricePerMillion: i.inputPricePerMillion,
-      outputPricePerMillion: i.outputPricePerMillion,
-      metadata: i.metadata ?? {},
+      enabled: i.enabled ?? old?.enabled ?? true,
+      capabilities: i.capabilities ?? old?.capabilities ?? [],
+      contextWindow: i.contextWindow ?? old?.contextWindow,
+      inputPricePerMillion:
+        i.inputPricePerMillion ?? old?.inputPricePerMillion,
+      outputPricePerMillion:
+        i.outputPricePerMillion ?? old?.outputPricePerMillion,
+      metadata: i.metadata ?? old?.metadata ?? {},
       createdAt: old?.createdAt ?? n,
       updatedAt: n,
     });
@@ -91,6 +119,22 @@ export class ModelHubService {
     const v = await this.repo.getDeployment(id);
     if (!v) throw new HubError("NOT_FOUND", `Deployment not found: ${id}`, 404);
     return v;
+  }
+  async removeDeployment(id: string) {
+    await this.deployment(id);
+    const policies = (await this.repo.listPolicies()).filter((policy) =>
+      policy.deploymentIds.includes(id),
+    );
+    if (policies.length)
+      throw new HubError(
+        "CONFLICT",
+        "Model deployment is still used by routing policies",
+        409,
+        false,
+        { policyIds: policies.map((policy) => policy.id) },
+      );
+    await this.repo.removeDeployment(id);
+    return { removed: true };
   }
   async savePolicy(
     i: Partial<RoutingPolicy> &
@@ -104,20 +148,32 @@ export class ModelHubService {
       );
     for (const id of i.deploymentIds) await this.deployment(id);
     const old = i.id ? await this.repo.getPolicy(i.id) : undefined,
-      n = new Date().toISOString();
+      n = new Date().toISOString(),
+      deploymentIds = [...new Set(i.deploymentIds)],
+      fixedDeploymentId =
+        i.mode === "fixed"
+          ? (i.fixedDeploymentId ?? old?.fixedDeploymentId ?? deploymentIds[0])
+          : undefined;
+    if (fixedDeploymentId && !deploymentIds.includes(fixedDeploymentId))
+      throw new HubError(
+        "INVALID_REQUEST",
+        "Fixed deployment must be included in the routing policy",
+        400,
+      );
     return this.repo.savePolicy({
       id: i.id ?? randomUUID(),
       name: i.name,
-      kind: i.kind,
+      kind: i.kind ?? old?.kind,
       mode: i.mode,
-      deploymentIds: [...new Set(i.deploymentIds)],
-      fixedDeploymentId: i.fixedDeploymentId,
-      failoverOnFailure: i.failoverOnFailure ?? true,
+      deploymentIds,
+      fixedDeploymentId,
+      failoverOnFailure:
+        i.failoverOnFailure ?? old?.failoverOnFailure ?? true,
       maxAttempts: Math.min(
         Math.max(i.maxAttempts ?? i.deploymentIds.length, 1),
         10,
       ),
-      enabled: i.enabled ?? true,
+      enabled: i.enabled ?? old?.enabled ?? true,
       cursor: old?.cursor ?? 0,
       createdAt: old?.createdAt ?? n,
       updatedAt: n,
@@ -128,6 +184,11 @@ export class ModelHubService {
     if (!v)
       throw new HubError("NOT_FOUND", `Routing policy not found: ${id}`, 404);
     return v;
+  }
+  async removePolicy(id: string) {
+    await this.policy(id);
+    await this.repo.removePolicy(id);
+    return { removed: true };
   }
   async select(input: {
     policyId?: string;

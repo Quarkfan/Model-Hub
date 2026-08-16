@@ -198,6 +198,13 @@ export class PgModelRepository implements ModelRepository {
     ).rows[0];
     return policy(r);
   }
+  async removePolicy(id: string) {
+    return (
+      (await this.pool.query("DELETE FROM mh.routing_policies WHERE id=$1", [
+        id,
+      ])).rowCount === 1
+    );
+  }
   async advancePolicyCursor(id: string, modulo: number) {
     const r = (
       await this.pool.query(
