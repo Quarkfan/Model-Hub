@@ -32,5 +32,10 @@ describe("model extension lifecycle", () => {
     await restored.initialize();
     expect(restored.get("model-adapter.test").lifecycleState).toBe("disabled");
     expect(await restored.logs("model-adapter.test")).toHaveLength(3);
+
+    expect((await restored.probe("model-adapter.test")).status).toBe("ready");
+    await restored.transition("model-adapter.test", "verified");
+    expect(restored.get("model-adapter.test").lifecycleState).toBe("verified");
+    expect(await restored.logs("model-adapter.test")).toHaveLength(6);
   });
 });
